@@ -12,13 +12,14 @@ import { StudentService } from '../shared/student.service';
 })
 export class CrudComponentComponent implements OnInit, OnDestroy {
   students: Student[] = [];
+
+  yougestStudents: Student[] = [];
+  avarageAge: number = 0;
   registerForm: FormGroup;
   constructor(private studentService: StudentService) {}
 
-  refreshedSubscribe = new Subscription();
-
   ngOnDestroy(): void {
-    this.refreshedSubscribe.unsubscribe();
+    this.studentService.listChangedSubject.unsubscribe();
   }
 
   ngOnInit(): void {
@@ -26,18 +27,23 @@ export class CrudComponentComponent implements OnInit, OnDestroy {
       name: new FormControl('', Validators.required),
       age: new FormControl('', Validators.required),
     });
-    this.students = this.studentService.onGet();
 
     this.studentService.listChangedSubject.subscribe(() => {
-      this.students = this.studentService.onGet();
+      this.studentService.getStudents().subscribe(() => {
+        this.students = this.studentService.activeList;
+      });
+    });
+
+    this.studentService.getStudents().subscribe(() => {
+      this.students = this.studentService.activeList;
     });
   }
 
   onSubmit(student: StudentItem) {
-    this.studentService.postStudents(student);
+    this.studentService.postStudents(student).subscribe();
   }
 
   onRemove(key: String) {
-    this.studentService.deleteStudents(key);
+    this.studentService.deleteStudents(key).subscribe();
   }
 }

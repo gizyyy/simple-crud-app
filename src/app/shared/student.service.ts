@@ -1,73 +1,79 @@
 import { Injectable } from '@angular/core';
 import { Student } from './student';
 import { HttpClient } from '@angular/common/http';
-import { catchError, map, Observable, of, Subject, Subscription } from 'rxjs';
+import {
+  catchError,
+  map,
+  Observable,
+  of,
+  pluck,
+  reduce,
+  Subject,
+  Subscription,
+  take,
+  tap,
+} from 'rxjs';
 import { StudentItem } from './student-item';
+import { isNgTemplate } from '@angular/compiler';
 
 @Injectable({
   providedIn: 'root',
 })
 export class StudentService {
-  listChangedSubject: Subject<any> = new Subject();
-  getSubscription: Subscription = new Subscription();
+  listChangedSubject: Subject<void> = new Subject();
+  activeList: Student[] = [];
+  youngestList: Student[] = [];
 
   constructor(private httpClient: HttpClient) {}
 
-  onGet(): Student[] {
-    let list = [];
-    this.getSubscription = this.getStudents()
-      .pipe()
-      .subscribe((response) => {
-        if (response === undefined || response === null) {
-          return list;
-        }
-        Object.keys(response).map(function (key) {
-          list.push(new Student(key, response[key]));
-        });
-        return list;
-      });
-    return list;
-  }
-
-  getStudents() {
-    return this.httpClient
+  getStudents(): Observable<any> {
+    let list: Student[] = [];
+    let result = this.httpClient
       .get<Student[]>(
         'https://ng-complete-guide-9f2a2-default-rtdb.firebaseio.com/students.json'
       )
-      .pipe();
+      .pipe(
+        map((items) => {
+          Object.keys(items).map((studentId) => {
+            list.push(new Student(studentId, items[studentId]));
+          });
+          this.activeList = list;
+        })
+      );
+    return result;
   }
 
   //error management hatayi ekrana don
-  postStudents(student: StudentItem) {
-    let studentReturning: Student;
-
-    this.httpClient
+  postStudents(student: StudentItem): Observable<any> {
+    return this.httpClient
       .post(
         'https://ng-complete-guide-9f2a2-default-rtdb.firebaseio.com/students.json',
         student
       )
-      .pipe()
-      .subscribe((response) => {
-        Object.keys(response).map(function (key) {
-          studentReturning = new Student(response[key], student);
-        });
-
-        this.listChangedSubject.next(studentReturning);
-      });
+      .pipe(
+        map((response) => {
+          Object.keys(response).map((studentId) => {
+            this.activeList.push(new Student(response[studentId], student));
+          });
+          this.listChangedSubject.next();
+        })
+      );
   }
 
-  deleteStudents(key: String) {
-    let studentReturning: Student;
-
-    this.httpClient
+  deleteStudents(key: String): Observable<any> {
+    return this.httpClient
       .delete(
         'https://ng-complete-guide-9f2a2-default-rtdb.firebaseio.com/students/' +
           key +
           '.json'
       )
-      .pipe()
-      .subscribe((response) => {
-        this.listChangedSubject.next(response);
-      });
+      .pipe(
+        tap(() => {
+          this.activeList.forEach((value, index) => {
+            if (value.key == key) this.activeList.splice(index, 1);
+          });
+          this.listChangedSubject.next();
+        })
+      );
   }
 }
