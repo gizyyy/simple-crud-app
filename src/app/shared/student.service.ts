@@ -3,6 +3,7 @@ import { Student } from './student';
 import { HttpClient } from '@angular/common/http';
 import {
   catchError,
+  EMPTY,
   map,
   Observable,
   of,
@@ -38,7 +39,8 @@ export class StudentService {
             list.push(new Student(studentId, items[studentId]));
           });
           this.activeList = list;
-        })
+        }),
+        catchError(() => EMPTY)
       );
     return result;
   }
@@ -56,7 +58,8 @@ export class StudentService {
             this.activeList.push(new Student(response[studentId], student));
           });
           this.listChangedSubject.next();
-        })
+        }),
+        catchError(() => EMPTY)
       );
   }
 
@@ -73,7 +76,8 @@ export class StudentService {
             if (value.key == key) this.activeList.splice(index, 1);
           });
           this.listChangedSubject.next();
-        })
+        }),
+        catchError(() => EMPTY)
       );
   }
 }
